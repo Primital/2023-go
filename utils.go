@@ -1,6 +1,9 @@
 package main
 
-import "math"
+import (
+	"math"
+	"math/rand"
+)
 
 // Earth's radius in kilometers
 const earthRadiusKm = 6371
@@ -25,4 +28,18 @@ func haversine(lat1, lon1, lat2, lon2 float64) float64 {
 	distance := earthRadiusKm * c * 1000
 
 	return math.Round(distance)
+}
+
+func RandomSolution(locations map[string]Location, rand *rand.Rand) map[string]LocationSolution {
+	solution := make(map[string]LocationSolution)
+	for locName, loc := range locations {
+		f3 := rand.Intn(6)
+		f9 := rand.Intn(6)
+		solution[locName] = LocationSolution{
+			Location: loc,
+			F9:       f3,
+			F3:       f9,
+		}
+	}
+	return solution
 }

@@ -16,45 +16,19 @@ func main() {
 		panic(err)
 	}
 
-	solution := make(map[string]LocationSolution)
-
-	for _, loc := range mapData.Locations {
-		f9 := 0
-		if loc.Name == "location55" {
-			f9 = 1
-		}
-		solution[loc.Name] = LocationSolution{
-			Location:      loc,
-			F3:            0,
-			F9:            f9,
-			SalesCapacity: 0,
-			Revenue:       0,
-			Earnings:      0,
-			LeasingCost:   0,
-		}
+	locations := make([]Location, len(mapData.Locations))
+	for i := 1; i <= len(mapData.Locations); i++ {
+		locations[i-1] = mapData.Locations[fmt.Sprintf("location%d", i)]
 	}
-	filterEmptyLocations := func(solution map[string]LocationSolution) map[string]LocationSolution {
-		filtered := make(map[string]LocationSolution)
-		for _, loc := range solution {
-			if loc.F3 > 0 || loc.F9 > 0 {
-				filtered[loc.Location.Name] = loc
-			}
-		}
-		return filtered
+	solverConfig := SolverConfig{
+		GenerationLimit:     50,
+		PopulationSize:      1000,
+		Locations:           locations,
+		MapData:             mapData,
+		GeneralGameData:     generalGameData,
+		MutationProbability: 0.1,
 	}
-	filtered := filterEmptyLocations(solution)
 
-	scoredSolution, err := CalculateScore("uppsala", filtered, *mapData, *generalGameData)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%v\n", scoredSolution)
-
-	// retSol, err := client.SubmitSolution("uppsala", scoredSolution)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Printf("%v\n", retSol)
-	// fmt.Println(scoredSolution.GameScore["total"])
-
+	solver := NewSolver(solverConfig)
+	solver.Run()
 }

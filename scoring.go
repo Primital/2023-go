@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"math"
-
-	"github.com/google/uuid"
 )
 
 type LocationSolution struct {
@@ -28,10 +26,9 @@ type ScoredSolution struct {
 	TotalF9100Count  int                         `json:"totalF9100Count"`
 }
 
-func CalculateScore(mapName string, solution map[string]LocationSolution, mapData MapData, generalData GeneralGameData) (ScoredSolution, error) {
+func CalculateScore(solution map[string]LocationSolution, mapData MapData, generalData GeneralGameData) (ScoredSolution, error) {
 	scoredSolution := ScoredSolution{
-		GameId:    uuid.New().String(),
-		MapName:   mapName,
+		MapName:   mapData.Name,
 		Locations: map[string]LocationSolution{},
 		GameScore: map[string]float64{
 			"co2Savings":    0.0,
