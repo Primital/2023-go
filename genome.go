@@ -1,6 +1,9 @@
 package main
 
-import "math/rand"
+import (
+	"math"
+	"math/rand"
+)
 
 type Pair struct {
 	F3 int
@@ -43,10 +46,37 @@ func (g *Genome) Copy() *Genome {
 func (g *Genome) Mutate(mutationProb float64) {
 	for i := range g.Pairs {
 		if rand.Float64() < mutationProb {
-			g.Pairs[i].F3 = rand.Intn(6)
+			negative := rand.Float64() < 0.5
+			if negative {
+				newVal := math.Max(0, float64(g.Pairs[i].F3-1))
+				g.Pairs[i].F3 = int(newVal)
+			} else {
+				newVal := math.Min(5, float64(g.Pairs[i].F3+1))
+				g.Pairs[i].F3 = int(newVal)
+			}
 		}
 		if rand.Float64() < mutationProb {
-			g.Pairs[i].F9 = rand.Intn(6)
+			negative := rand.Float64() < 0.5
+			if negative {
+				newVal := math.Max(0, float64(g.Pairs[i].F9-1))
+				g.Pairs[i].F9 = int(newVal)
+			} else {
+				newVal := math.Min(5, float64(g.Pairs[i].F9+1))
+				g.Pairs[i].F9 = int(newVal)
+			}
 		}
 	}
+}
+
+func (g *Genome) Crossover(other *Genome) (*Genome, *Genome) {
+	crossoverPoint := rand.Intn(len(g.Pairs))
+	c1Pairs := append(g.Pairs[:crossoverPoint], other.Pairs[crossoverPoint:]...)
+	c2Pairs := append(other.Pairs[:crossoverPoint], g.Pairs[crossoverPoint:]...)
+	c1 := &Genome{
+		Pairs: c1Pairs,
+	}
+	c2 := &Genome{
+		Pairs: c2Pairs,
+	}
+	return c1, c2
 }

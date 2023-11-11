@@ -3,7 +3,6 @@ package main
 import "fmt"
 
 func main() {
-
 	const APIKey = "74266cdf-1f38-403c-8766-044cc03d9162"
 	const BaseURL = "https://api.considition.com"
 	client := NewClient(APIKey, BaseURL)
@@ -21,8 +20,8 @@ func main() {
 		locations[i-1] = mapData.Locations[fmt.Sprintf("location%d", i)]
 	}
 	solverConfig := SolverConfig{
-		GenerationLimit:     50,
-		PopulationSize:      1000,
+		GenerationLimit:     2000,
+		PopulationSize:      300,
 		Locations:           locations,
 		MapData:             mapData,
 		GeneralGameData:     generalGameData,
@@ -31,4 +30,10 @@ func main() {
 
 	solver := NewSolver(solverConfig)
 	solver.Run()
+	responseSol, err := client.SubmitSolution(mapData.Name, solver.GetSolution())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Submitted game")
+	fmt.Printf("Response: %v", responseSol.Score)
 }
