@@ -1,9 +1,13 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
+	"log"
 	"math/rand"
+	"os"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -60,6 +64,14 @@ type Solver struct {
 	WorstSolution float64
 	AverageScore  float64
 	RNG           *rand.Rand
+	OptLog        []OptimizationLog
+}
+
+type OptimizationLog struct {
+	Generation    int     `csv:"generation"`
+	BestSolution  float64 `csv:"best_solution"`
+	WorstSolution float64 `csv:"worst_solution"`
+	AverageScore  float64 `csv:"average_score"`
 }
 
 func NewSolver(cfg SolverConfig) *Solver {
@@ -77,6 +89,12 @@ func (s *Solver) Run() {
 		fmt.Printf("Best solution: %f\t", s.BestSolution)
 		fmt.Printf("Worst solution: %f\t", s.WorstSolution)
 		fmt.Printf("Average score: %f\n", s.AverageScore)
+		s.OptLog = append(s.OptLog, OptimizationLog{
+			Generation:    generation,
+			BestSolution:  s.BestSolution,
+			WorstSolution: s.WorstSolution,
+			AverageScore:  s.AverageScore,
+		})
 		cloningSelection := s.SelectForCloning()
 		cloned := s.Clone(cloningSelection)
 		crossoverSelection := s.SelectForCrossover()
@@ -214,4 +232,31 @@ func (s *Solver) GetSolution() ScoredSolution {
 		panic(err)
 	}
 	return scoredSolution
+}
+
+func (s *Solver) WriteOptimizationLogToFile(file *os.File) error {
+	// Create a CSV writer
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Write the CSV header
+	header := []string{"generation", "best_solution", "worst_solution", "average_score"}
+	if err := writer.Write(header); err != nil {
+		log.Fatal(err)
+	}
+
+	// Write each struct as a row in the CSV file
+	for _, logEntry := range s.OptLog {
+		record := []string{
+			strconv.Itoa(logEntry.Generation),
+			strconv.FormatFloat(logEntry.BestSolution, 'f', -1, 64),
+			strconv.FormatFloat(logEntry.WorstSolution, 'f', -1, 64),
+			strconv.FormatFloat(logEntry.AverageScore, 'f', -1, 64),
+		}
+
+		if err := writer.Write(record); err != nil {
+			log.Fatal(err)
+		}
+	}
+	return nil
 }

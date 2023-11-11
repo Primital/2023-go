@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 )
 
 const submit = false
@@ -25,17 +26,39 @@ func main() {
 		locations[i-1] = &mapLoc
 	}
 	PrecalculateNeighborDistances(locations)
+
 	solverConfig := SolverConfig{
-		GenerationLimit:     2000,
-		PopulationSize:      300,
+		GenerationLimit:     1000,
+		PopulationSize:      1000,
 		Locations:           locations,
 		MapData:             mapData,
 		GeneralGameData:     generalGameData,
 		MutationProbability: 0.1,
 	}
 
+	// Profile
+	// f, err := os.Create("cpu.prof")
+	// if err != nil {
+	// 	log.Fatal("could not create CPU profile: ", err)
+	// }
+	// defer f.Close()
+	//
+	// if err := pprof.StartCPUProfile(f); err != nil {
+	// 	log.Fatal("could not start CPU profile: ", err)
+	// }
+	// defer pprof.StopCPUProfile()
+
 	solver := NewSolver(solverConfig)
 	solver.Run()
+
+	// write csv of optimization log to file
+	f, err := os.Create("optlog.csv")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	solver.WriteOptimizationLogToFile(f)
+
 	if submit {
 		responseSol, err := client.SubmitSolution(mapData.Name, solver.GetSolution())
 		if err != nil {
