@@ -81,8 +81,8 @@ func (s *Solver) Run() {
 		cloned := s.Clone(cloningSelection)
 		crossoverSelection := s.SelectForCrossover()
 		babies := s.Crossover(crossoverSelection)
-		s.Mutate(babies)
 		s.Replace(cloned, babies)
+		s.Mutate()
 	}
 }
 
@@ -148,8 +148,11 @@ func (s *Solver) SelectForReplacement() []*Genome {
 	return toBeReplaced
 }
 
-func (s *Solver) Mutate(genomes []*Genome) {
-	for _, genome := range genomes {
+func (s *Solver) Mutate() {
+	for i, genome := range s.Population {
+		if i == 0 {
+			continue // don't mutate the best genome
+		}
 		// if mutate threshold is met, mutate genome
 		if rand.Float64() < s.Config.MutationProbability {
 			genome.Mutate(s.Config.MutationProbability)
