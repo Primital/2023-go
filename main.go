@@ -1,12 +1,16 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
+
+const submit = false
 
 func main() {
 	const APIKey = "74266cdf-1f38-403c-8766-044cc03d9162"
 	const BaseURL = "https://api.considition.com"
 	client := NewClient(APIKey, BaseURL)
-	mapData, err := client.GetMapData("uppsala")
+	mapData, err := client.GetMapData("goteborg")
 	if err != nil {
 		panic(err)
 	}
@@ -30,10 +34,12 @@ func main() {
 
 	solver := NewSolver(solverConfig)
 	solver.Run()
-	responseSol, err := client.SubmitSolution(mapData.Name, solver.GetSolution())
-	if err != nil {
-		panic(err)
+	if submit {
+		responseSol, err := client.SubmitSolution(mapData.Name, solver.GetSolution())
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Submitted game %s\n", responseSol.ID)
+		fmt.Printf("Response: %v", responseSol.Score.Total)
 	}
-	fmt.Printf("Submitted game")
-	fmt.Printf("Response: %v", responseSol.Score)
 }

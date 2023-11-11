@@ -90,8 +90,15 @@ type (
 )
 
 type GameData struct {
-	ID    string             `json:"id"`
-	Score map[string]float64 `json:"score"`
+	ID    string    `json:"id"`
+	Score GameScore `json:"gameScore"`
+}
+
+type GameScore struct {
+	Co2Savings    float64 `json:"kgCo2Savings"`
+	Earnings      float64 `json:"earnings"`
+	TotalFootfall float64 `json:"totalFootfall"`
+	Total         float64 `json:"total"`
 }
 
 func (l Location) GetLocationsWithinWalkingDistance(locations map[string]LocationSolution, data GeneralGameData) map[string]float64 {
