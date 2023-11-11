@@ -70,8 +70,9 @@ func (g *Genome) Mutate(mutationProb float64) {
 
 func (g *Genome) Crossover(other *Genome) (*Genome, *Genome) {
 	crossoverPoint := rand.Intn(len(g.Pairs))
-	c1Pairs := append(g.Pairs[:crossoverPoint], other.Pairs[crossoverPoint:]...)
-	c2Pairs := append(other.Pairs[:crossoverPoint], g.Pairs[crossoverPoint:]...)
+	crossoverPoint2 := rand.Intn(len(g.Pairs)-crossoverPoint) + crossoverPoint
+	c1Pairs := append(append(g.Pairs[:crossoverPoint], other.Pairs[crossoverPoint:crossoverPoint2]...), g.Pairs[crossoverPoint2:]...)
+	c2Pairs := append(append(other.Pairs[:crossoverPoint], g.Pairs[crossoverPoint:crossoverPoint2]...), other.Pairs[crossoverPoint2:]...)
 	c1 := &Genome{
 		Pairs: c1Pairs,
 	}
