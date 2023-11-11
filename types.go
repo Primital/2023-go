@@ -18,13 +18,14 @@ type (
 	}
 
 	Location struct {
-		Name          string  `json:"locationName"`
-		Type          string  `json:"locationType"`
-		Latitude      float64 `json:"latitude"`
-		Longitude     float64 `json:"longitude"`
-		Footfall      float64 `json:"footfall"`
-		FootfallScale float64 `json:"footfallScale"`
-		SalesVolume   float64 `json:"salesVolume"`
+		Name              string  `json:"locationName"`
+		Type              string  `json:"locationType"`
+		Latitude          float64 `json:"latitude"`
+		Longitude         float64 `json:"longitude"`
+		Footfall          float64 `json:"footfall"`
+		FootfallScale     float64 `json:"footfallScale"`
+		SalesVolume       float64 `json:"salesVolume"`
+		neighborDistances map[string]float64
 	}
 
 	HotSpot struct {
@@ -113,4 +114,19 @@ func (l Location) GetLocationsWithinWalkingDistance(locations map[string]Locatio
 		}
 	}
 	return locs
+}
+
+func PrecalculateNeighborDistances(locations []*Location) {
+	for _, loc := range locations {
+		loc.neighborDistances = make(map[string]float64)
+		for _, other := range locations {
+			if loc.Name == other.Name {
+				continue
+			}
+			dist := haversine(loc.Latitude, loc.Longitude, other.Latitude, other.Longitude)
+			if dist <= 150.0 {
+				loc.neighborDistances[other.Name] = dist
+			}
+		}
+	}
 }

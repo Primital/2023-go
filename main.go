@@ -19,10 +19,12 @@ func main() {
 		panic(err)
 	}
 
-	locations := make([]Location, len(mapData.Locations))
+	locations := make([]*Location, len(mapData.Locations))
 	for i := 1; i <= len(mapData.Locations); i++ {
-		locations[i-1] = mapData.Locations[fmt.Sprintf("location%d", i)]
+		mapLoc := mapData.Locations[fmt.Sprintf("location%d", i)]
+		locations[i-1] = &mapLoc
 	}
+	PrecalculateNeighborDistances(locations)
 	solverConfig := SolverConfig{
 		GenerationLimit:     2000,
 		PopulationSize:      300,

@@ -127,7 +127,7 @@ func distributeSales(scoredLocations map[string]LocationSolution, locationListNo
 			continue
 		}
 		// Just put this in a global precalculated map if this is slow
-		locationsWithInVicinity := loc.GetLocationsWithinWalkingDistance(scoredLocations, generalData)
+		locationsWithInVicinity := loc.neighborDistances
 		total := 0.0
 
 		for locName, dist := range locationsWithInVicinity {

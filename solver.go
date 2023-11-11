@@ -36,7 +36,7 @@ DONE: Implement function for evaluating a solution
 type SolverConfig struct {
 	GenerationLimit     int
 	PopulationSize      int
-	Locations           []Location
+	Locations           []*Location
 	MapData             *MapData
 	GeneralGameData     *GeneralGameData
 	MutationProbability float64
@@ -190,7 +190,7 @@ func (s *Solver) GetSolution() ScoredSolution {
 	genomeLocation := make(map[string]LocationSolution)
 	for j, loc := range s.Config.Locations {
 		genomeLocation[loc.Name] = LocationSolution{
-			Location: loc,
+			Location: *loc,
 			F3:       genome.Pairs[j].F3,
 			F9:       genome.Pairs[j].F9,
 		}
