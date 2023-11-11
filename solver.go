@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -93,36 +94,17 @@ func (s *Solver) SeedPopulation() {
 }
 
 func (s *Solver) EvaluatePopulation() {
-	for _, genome := range s.Population {
-		genomeLocation := make(map[string]LocationSolution)
-		for j, loc := range s.Config.Locations {
-			genomeLocation[loc.Name] = LocationSolution{
-				Location: loc,
-				F3:       genome.Pairs[j].F3,
-				F9:       genome.Pairs[j].F9,
-			}
-		}
+	var wg sync.WaitGroup
 
-		filterEmptyLocations := func(solution map[string]LocationSolution) map[string]LocationSolution {
-			filtered := make(map[string]LocationSolution)
-			for _, loc := range solution {
-				if loc.F3 > 0 || loc.F9 > 0 {
-					filtered[loc.Location.Name] = loc
-				}
-			}
-			return filtered
-		}
-		filtered := filterEmptyLocations(genomeLocation)
-		if len(filtered) == 0 {
-			genome.Score = 0
-			continue
-		}
-		scoredSolution, err := CalculateScore(filtered, *s.Config.MapData, *s.Config.GeneralGameData)
-		if err != nil {
-			panic(err)
-		}
-		genome.Score = scoredSolution.GameScore["total"]
+	for _, genome := range s.Population {
+		wg.Add(1) // Increment the WaitGroup counter
+		go func(g *Genome) {
+			defer wg.Done() // Decrement the counter when the goroutine completes
+			g.Evaluate(s.Config.Locations, *s.Config.MapData, *s.Config.GeneralGameData)
+		}(genome)
 	}
+
+	wg.Wait() // Wait for all goroutines to finish
 }
 
 func (s *Solver) RankPopulation() {

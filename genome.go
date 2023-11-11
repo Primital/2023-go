@@ -80,3 +80,35 @@ func (g *Genome) Crossover(other *Genome) (*Genome, *Genome) {
 	}
 	return c1, c2
 }
+
+func (g *Genome) Evaluate(locations []*Location, mapData MapData, generalData GeneralGameData) {
+	genomeLocation := make(map[string]LocationSolution)
+	for j, loc := range locations {
+		genomeLocation[loc.Name] = LocationSolution{
+			Location: *loc,
+			F3:       g.Pairs[j].F3,
+			F9:       g.Pairs[j].F9,
+		}
+	}
+
+	filterEmptyLocations := func(solution map[string]LocationSolution) map[string]LocationSolution {
+		filtered := make(map[string]LocationSolution)
+		for _, loc := range solution {
+			if loc.F3 > 0 || loc.F9 > 0 {
+				filtered[loc.Location.Name] = loc
+			}
+		}
+		return filtered
+	}
+	filtered := filterEmptyLocations(genomeLocation)
+	if len(filtered) == 0 {
+		g.Score = 0
+		return
+	}
+	scoredSolution, err := CalculateScore(filtered, mapData, generalData)
+	if err != nil {
+		panic(err)
+	}
+	g.Score = scoredSolution.GameScore["total"]
+
+}
