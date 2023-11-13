@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
-const submit = false
+const submit = true
 
 func main() {
 	const APIKey = "74266cdf-1f38-403c-8766-044cc03d9162"
@@ -26,14 +27,13 @@ func main() {
 		locations[i-1] = &mapLoc
 	}
 	PrecalculateNeighborDistances(locations)
-
 	solverConfig := SolverConfig{
-		GenerationLimit:     1000,
-		PopulationSize:      1000,
-		Locations:           locations,
-		MapData:             mapData,
-		GeneralGameData:     generalGameData,
-		MutationProbability: 0.1,
+		PopulationSize:             100,
+		Locations:                  locations,
+		MapData:                    mapData,
+		GeneralGameData:            generalGameData,
+		MutationProbability:        0.3,
+		GenerationImprovementLimit: 2000,
 	}
 
 	// Profile
@@ -51,8 +51,11 @@ func main() {
 	solver := NewSolver(solverConfig)
 	solver.Run()
 
+	fmt.Printf("Best solution (Generation %d): %.f\n", solver.LatestImprovement, solver.BestGenome.Score)
+
 	// write csv of optimization log to file
-	f, err := os.Create("optlog.csv")
+	now := time.Now()
+	f, err := os.Create(fmt.Sprintf("optlogs/optlog-%s-%s.csv", mapData.Name, now.Format("2006-01-02-15-04-05")))
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +63,8 @@ func main() {
 	solver.WriteOptimizationLogToFile(f)
 
 	if submit {
-		responseSol, err := client.SubmitSolution(mapData.Name, solver.GetSolution())
+		sol := solver.GetSolution()
+		responseSol, err := client.SubmitSolution(mapData.Name, sol)
 		if err != nil {
 			panic(err)
 		}

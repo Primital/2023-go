@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 )
@@ -18,8 +19,8 @@ type Genome struct {
 func NewRandomGenome(rng *rand.Rand, locations int) *Genome {
 	pairs := make([]Pair, locations)
 	for i := 0; i < locations; i++ {
-		f3 := rng.Intn(6)
-		f9 := rng.Intn(6)
+		f3 := rng.Intn(2)
+		f9 := rng.Intn(2)
 		pairs[i] = Pair{
 			F3: f3,
 			F9: f9,
@@ -41,6 +42,30 @@ func (g *Genome) Copy() *Genome {
 	}
 	copy(c.Pairs, g.Pairs)
 	return c
+}
+
+func (g *Genome) Mutate2(mutationProb float64) {
+	i := rand.Intn(len(g.Pairs))
+	if rand.Float64() < mutationProb {
+		negative := rand.Float64() < 0.5
+		if negative {
+			newVal := math.Max(0, float64(g.Pairs[i].F3-1))
+			g.Pairs[i].F3 = int(newVal)
+		} else {
+			newVal := math.Min(5, float64(g.Pairs[i].F3+1))
+			g.Pairs[i].F3 = int(newVal)
+		}
+	}
+	if rand.Float64() < mutationProb {
+		negative := rand.Float64() < 0.5
+		if negative {
+			newVal := math.Max(0, float64(g.Pairs[i].F9-1))
+			g.Pairs[i].F9 = int(newVal)
+		} else {
+			newVal := math.Min(5, float64(g.Pairs[i].F9+1))
+			g.Pairs[i].F9 = int(newVal)
+		}
+	}
 }
 
 func (g *Genome) Mutate(mutationProb float64) {
@@ -82,6 +107,19 @@ func (g *Genome) Crossover(other *Genome) (*Genome, *Genome) {
 	return c1, c2
 }
 
+func (g *Genome) CrossoverSinglePair(other *Genome) (*Genome, *Genome) {
+	crossoverPoint := rand.Intn(len(g.Pairs))
+	c1Pairs := append(append(g.Pairs[:crossoverPoint], other.Pairs[crossoverPoint]), g.Pairs[crossoverPoint+1:]...)
+	c2Pairs := append(append(other.Pairs[:crossoverPoint], g.Pairs[crossoverPoint]), other.Pairs[crossoverPoint+1:]...)
+	c1 := &Genome{
+		Pairs: c1Pairs,
+	}
+	c2 := &Genome{
+		Pairs: c2Pairs,
+	}
+	return c1, c2
+}
+
 func (g *Genome) Evaluate(locations []*Location, mapData MapData, generalData GeneralGameData) {
 	genomeLocation := make(map[string]LocationSolution)
 	for j, loc := range locations {
@@ -106,10 +144,18 @@ func (g *Genome) Evaluate(locations []*Location, mapData MapData, generalData Ge
 		g.Score = 0
 		return
 	}
-	scoredSolution, err := CalculateScore(filtered, mapData, generalData)
+	scoredSolution, err := CalculateScore(filtered, mapData.Name, generalData, locations)
 	if err != nil {
 		panic(err)
 	}
 	g.Score = scoredSolution.GameScore["total"]
 
+}
+
+func (g *Genome) String() string {
+	encoded := ""
+	for _, pair := range g.Pairs {
+		encoded = fmt.Sprintf("%s%d%d", encoded, pair.F3, pair.F9)
+	}
+	return encoded
 }

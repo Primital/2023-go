@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 )
 
 type Client struct {
@@ -90,6 +91,16 @@ func (c *Client) SubmitSolution(mapName string, solution ScoredSolution) (*GameD
 	if err != nil {
 		return nil, err
 	}
+
+	file, err := os.Create("solution.json")
+	if err != nil {
+		return nil, err
+	}
+	if err := json.NewEncoder(file).Encode(submitSolutionRequest); err != nil {
+		return nil, err
+	}
+
+	file.Close()
 
 	request, err := http.NewRequest("POST", fmt.Sprintf("%s/api/Game/submitSolution?mapName=%s", c.baseUrl, mapName), body)
 	if err != nil {

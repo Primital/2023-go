@@ -26,9 +26,9 @@ type ScoredSolution struct {
 	TotalF9100Count  int                         `json:"totalF9100Count"`
 }
 
-func CalculateScore(solution map[string]LocationSolution, mapData MapData, generalData GeneralGameData) (ScoredSolution, error) {
+func CalculateScore(solution map[string]LocationSolution, mapName string, generalData GeneralGameData, locations []*Location) (ScoredSolution, error) {
 	scoredSolution := ScoredSolution{
-		MapName:   mapData.Name,
+		MapName:   mapName,
 		Locations: map[string]LocationSolution{},
 		GameScore: map[string]float64{
 			"co2Savings":    0.0,
@@ -37,20 +37,21 @@ func CalculateScore(solution map[string]LocationSolution, mapData MapData, gener
 	}
 
 	locationListNoRefillStation := map[string]Location{}
-	for _, loc := range mapData.Locations {
+	for _, loc := range locations {
 		key := loc.Name
 		if _, ok := solution[key]; ok {
 			f3Count := solution[key].F3
 			f9Count := solution[key].F9
 
 			newLoc := Location{
-				Name:          loc.Name,
-				Type:          loc.Type,
-				Latitude:      loc.Latitude,
-				Longitude:     loc.Longitude,
-				Footfall:      loc.Footfall,
-				FootfallScale: loc.FootfallScale,
-				SalesVolume:   loc.SalesVolume * generalData.RefillSalesFactor,
+				Name:              loc.Name,
+				Type:              loc.Type,
+				Latitude:          loc.Latitude,
+				Longitude:         loc.Longitude,
+				Footfall:          loc.Footfall,
+				FootfallScale:     loc.FootfallScale,
+				SalesVolume:       loc.SalesVolume * generalData.RefillSalesFactor,
+				neighborDistances: loc.neighborDistances,
 			}
 			scoredSolution.Locations[key] = LocationSolution{
 				Location:      newLoc,
@@ -63,8 +64,16 @@ func CalculateScore(solution map[string]LocationSolution, mapData MapData, gener
 				return ScoredSolution{}, fmt.Errorf("location %s has no sales capacity", key)
 			}
 		} else {
-			newLoc := loc
-			newLoc.SalesVolume = loc.SalesVolume * generalData.RefillSalesFactor
+			newLoc := Location{
+				Name:              loc.Name,
+				Type:              loc.Type,
+				Latitude:          loc.Latitude,
+				Longitude:         loc.Longitude,
+				Footfall:          loc.Footfall,
+				FootfallScale:     loc.FootfallScale,
+				SalesVolume:       loc.SalesVolume * generalData.RefillSalesFactor,
+				neighborDistances: loc.neighborDistances,
+			}
 			locationListNoRefillStation[key] = newLoc
 		}
 	}
@@ -77,13 +86,14 @@ func CalculateScore(solution map[string]LocationSolution, mapData MapData, gener
 	for _, loc := range scoredSolution.Locations {
 		newLoc := LocationSolution{
 			Location: Location{
-				Name:          loc.Name,
-				Type:          loc.Type,
-				Latitude:      loc.Latitude,
-				Longitude:     loc.Longitude,
-				Footfall:      loc.Footfall,
-				FootfallScale: loc.FootfallScale,
-				SalesVolume:   loc.SalesVolume,
+				Name:              loc.Name,
+				Type:              loc.Type,
+				Latitude:          loc.Latitude,
+				Longitude:         loc.Longitude,
+				Footfall:          loc.Footfall,
+				FootfallScale:     loc.FootfallScale,
+				SalesVolume:       math.Round(loc.SalesVolume),
+				neighborDistances: loc.neighborDistances,
 			},
 			F9:            loc.F9,
 			F3:            loc.F3,
@@ -92,7 +102,6 @@ func CalculateScore(solution map[string]LocationSolution, mapData MapData, gener
 			Earnings:      loc.Earnings,
 			LeasingCost:   loc.LeasingCost,
 		}
-		newLoc.SalesVolume = math.Round(loc.SalesVolume)
 		sales := newLoc.SalesVolume
 		if newLoc.SalesCapacity < newLoc.SalesVolume {
 			sales = newLoc.SalesCapacity
@@ -106,13 +115,15 @@ func CalculateScore(solution map[string]LocationSolution, mapData MapData, gener
 		scoredSolution.TotalF9100Count += loc.F9
 		scoredSolution.TotalRevenue += newLoc.Revenue
 		scoredSolution.TotalLeasingCost += newLoc.LeasingCost
-		scoredSolution.GameScore["co2Savings"] += sales * (generalData.ClassicUnitData.Co2PerUnitInGrams - generalData.RefillUnitData.Co2PerUnitInGrams) / 1000
+		co2Saving := sales * (generalData.ClassicUnitData.Co2PerUnitInGrams - generalData.RefillUnitData.Co2PerUnitInGrams) / 1000
+		scoredSolution.GameScore["co2Savings"] += co2Saving
 		scoredSolution.GameScore["totalFootfall"] += loc.Footfall
 	}
 	scoredSolution.TotalRevenue = math.Round(scoredSolution.TotalRevenue)
-	scoredSolution.GameScore["co2Savings"] = math.Round(scoredSolution.GameScore["co2Savings"] -
-		float64(scoredSolution.TotalF3100Count)*generalData.Freestyle3100Data.StaticCo2/1000 -
-		float64(scoredSolution.TotalF9100Count)*generalData.Freestyle9100Data.StaticCo2/1000)
+	scoredSolution.GameScore["co2Savings"] = math.Round(
+		scoredSolution.GameScore["co2Savings"] -
+			float64(scoredSolution.TotalF3100Count)*generalData.Freestyle3100Data.StaticCo2/1000 -
+			float64(scoredSolution.TotalF9100Count)*generalData.Freestyle9100Data.StaticCo2/1000)
 	scoredSolution.GameScore["earnings"] = scoredSolution.TotalRevenue - scoredSolution.TotalLeasingCost
 	scoredSolution.GameScore["total"] = math.Round((scoredSolution.GameScore["co2Savings"]*generalData.Co2PricePerKiloInSek + scoredSolution.GameScore["earnings"]) * (1 + scoredSolution.GameScore["totalFootfall"]))
 	return scoredSolution, nil
@@ -136,6 +147,9 @@ func distributeSales(scoredLocations map[string]LocationSolution, locationListNo
 		}
 
 		for locName, dist := range distributeTo {
+			if total == 0.0 {
+				continue
+			}
 			newSalesVolume := dist / total * generalData.RefillDistributionRate * locationWithoutRefillStation.SalesVolume
 			sLoc := scoredLocations[locName]
 			sLoc.SalesVolume += newSalesVolume

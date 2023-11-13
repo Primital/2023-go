@@ -12,39 +12,15 @@ import (
 	"time"
 )
 
-/*
-IDEA:
-- Create a solver that takes a map and a general game data as input
-- The solver should instantiate a population of solutions
-- Each solution is evaulated and ranked (sorted) based on its score
-- The top X% of solutions are selected for reproduction
-- The top Y% of solutions are selected for mutation
-- The top Z% of solutions are selected for crossover
-- The top A% of solutions are selected for cloning
-- The bottom B% of solutions are selected for replacement
-- The solver keeps track of the best solutions, and the worst
-- The solver keeps track of the average score of the population
-- Fiddle with how high the chance for mutation and stuff should be
-- If possible, make the solver run in parallel
-- If possible, make the solver draw a graph of how the solution is improving over time
-
-
-TODO: Implement function for seeding the population with random solutions
-TODO: Implement function for mutating solution
-TODO: Implement function for crossover
-TODO: Implement function for cloning
-TODO: Implement function for replacing
-DONE: Implement function for evaluating a solution
-*/
-
 type SolverConfig struct {
-	GenerationLimit     int
-	PopulationSize      int
-	Locations           []*Location
-	MapData             *MapData
-	GeneralGameData     *GeneralGameData
-	MutationProbability float64
-	ReproductionMethod  ReproductionMethod
+	GenerationLimit            int
+	PopulationSize             int
+	Locations                  []*Location
+	MapData                    *MapData
+	GeneralGameData            *GeneralGameData
+	MutationProbability        float64
+	ReproductionMethod         ReproductionMethod
+	GenerationImprovementLimit int
 }
 
 type ReproductionMethod string
@@ -57,14 +33,16 @@ var (
 )
 
 type Solver struct {
-	Config        SolverConfig
-	Population    []*Genome
-	BestGenome    *Genome
-	BestSolution  float64
-	WorstSolution float64
-	AverageScore  float64
-	RNG           *rand.Rand
-	OptLog        []OptimizationLog
+	Config            SolverConfig
+	Population        []*Genome
+	BestGenome        *Genome
+	BestSolution      float64
+	WorstSolution     float64
+	AverageScore      float64
+	RNG               *rand.Rand
+	OptLog            []OptimizationLog
+	LatestImprovement int
+	Generation        int
 }
 
 type OptimizationLog struct {
@@ -82,13 +60,14 @@ func NewSolver(cfg SolverConfig) *Solver {
 
 func (s *Solver) Run() {
 	s.SeedPopulation()
-	for generation := 0; generation < s.Config.GenerationLimit; generation++ {
-		fmt.Printf("Generation %d:\t", generation)
+	for generation := 0; generation-s.LatestImprovement < s.Config.GenerationImprovementLimit; generation++ {
+		s.Generation = generation
+		// fmt.Printf("Generation %d:\t", generation)
 		s.EvaluatePopulation()
-		s.RankPopulation()
-		fmt.Printf("Best solution: %f\t", s.BestSolution)
-		fmt.Printf("Worst solution: %f\t", s.WorstSolution)
-		fmt.Printf("Average score: %f\n", s.AverageScore)
+		s.RankPopulation(generation)
+		// fmt.Printf("Best solution: %f\t", s.BestSolution)
+		// fmt.Printf("Worst solution: %f\t", s.WorstSolution)
+		// fmt.Printf("Average score: %f\n", s.AverageScore)
 		s.OptLog = append(s.OptLog, OptimizationLog{
 			Generation:    generation,
 			BestSolution:  s.BestSolution,
@@ -99,7 +78,11 @@ func (s *Solver) Run() {
 		cloned := s.Clone(cloningSelection)
 		crossoverSelection := s.SelectForCrossover()
 		babies := s.Crossover(crossoverSelection)
-		s.Replace(cloned, babies)
+		newRandomGenomes := make([]*Genome, 10)
+		for i := 0; i < 10; i++ {
+			newRandomGenomes[i] = NewRandomGenome(s.RNG, len(s.Config.Locations))
+		}
+		s.Replace(cloned, babies, newRandomGenomes)
 		s.Mutate()
 	}
 }
@@ -125,14 +108,17 @@ func (s *Solver) EvaluatePopulation() {
 	wg.Wait() // Wait for all goroutines to finish
 }
 
-func (s *Solver) RankPopulation() {
+func (s *Solver) RankPopulation(generation int) {
 	sort.Slice(s.Population, func(i, j int) bool {
 		return s.Population[i].Score > s.Population[j].Score
 	})
 	s.BestSolution = s.Population[0].Score
 	if s.BestGenome == nil || s.BestGenome.Score < s.BestSolution {
-		s.BestGenome = s.Population[0]
+		s.BestGenome = s.Population[0].Copy()
+		s.LatestImprovement = generation
+		fmt.Printf("(Generation %d)\tNew best: %.f\n", s.Generation, s.BestGenome.Score)
 	}
+	s.Population = append([]*Genome{s.BestGenome.Copy()}, s.Population[:s.Config.PopulationSize-1]...)
 	s.WorstSolution = s.Population[len(s.Population)-1].Score
 	s.AverageScore = 0
 	for _, genome := range s.Population {
@@ -142,8 +128,8 @@ func (s *Solver) RankPopulation() {
 }
 
 func (s *Solver) SelectForCrossover() []*Genome {
-	selection := make([]*Genome, len(s.Population)-len(s.Population)/10)
-	for i := 0; i < len(s.Population)-len(s.Population)/10; i++ {
+	selection := make([]*Genome, len(s.Population)-len(s.Population)/10-10)
+	for i := 0; i < len(s.Population)-len(s.Population)/10-10; i++ {
 		selection[i] = s.Population[i]
 	}
 	return selection
@@ -172,8 +158,9 @@ func (s *Solver) Mutate() {
 			continue // don't mutate the best genome
 		}
 		// if mutate threshold is met, mutate genome
-		if rand.Float64() < s.Config.MutationProbability {
-			genome.Mutate(s.Config.MutationProbability)
+		// if rand.Float64() < s.Config.MutationProbability {
+		if rand.Float64() < genome.Score/s.BestGenome.Score {
+			genome.Mutate2(s.Config.MutationProbability)
 		}
 	}
 }
@@ -183,6 +170,7 @@ func (s *Solver) Crossover(population []*Genome) []*Genome {
 	babies := make([]*Genome, len(population))
 	for i := 0; i < len(population); i += 2 {
 		babies[i], babies[i+1] = population[randomOrder[i]].Crossover(population[randomOrder[i+1]])
+		// babies[i], babies[i+1] = population[randomOrder[i]].CrossoverSinglePair(population[randomOrder[i+1]])
 	}
 	return babies
 }
@@ -195,13 +183,16 @@ func (s *Solver) Clone(genomes []*Genome) []*Genome {
 	return clones
 }
 
-func (s *Solver) Replace(cloned, babies []*Genome) {
+func (s *Solver) Replace(cloned, babies, randomGenes []*Genome) {
 	newPopulation := make([]*Genome, len(s.Population))
 	for i := 0; i < len(cloned); i++ {
 		newPopulation[i] = cloned[i]
 	}
 	for i := 0; i < len(babies); i++ {
 		newPopulation[i+len(cloned)] = babies[i]
+	}
+	for i := 0; i < len(randomGenes); i++ {
+		newPopulation[i+len(cloned)+len(babies)] = randomGenes[i]
 	}
 	s.Population = newPopulation
 }
@@ -227,7 +218,7 @@ func (s *Solver) GetSolution() ScoredSolution {
 		return filtered
 	}
 	filtered := filterEmptyLocations(genomeLocation)
-	scoredSolution, err := CalculateScore(filtered, *s.Config.MapData, *s.Config.GeneralGameData)
+	scoredSolution, err := CalculateScore(filtered, s.Config.MapData.Name, *s.Config.GeneralGameData, s.Config.Locations)
 	if err != nil {
 		panic(err)
 	}
