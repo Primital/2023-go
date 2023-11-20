@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -261,6 +262,39 @@ func (s *Solver) WriteOptimizationLogToFile(file *os.File) error {
 		if err := writer.Write(record); err != nil {
 			log.Fatal(err)
 		}
+	}
+	return nil
+}
+
+func (s *Solver) WriteSolutionToFile(file *os.File, gameID string) error {
+	/* Write the solution as JSON to a file */
+	bestGenome := s.BestGenome
+	type SolutionInput struct {
+		LocationName string `json:"locationName"`
+		F3           int    `json:"freestyle3100Count"`
+		F9           int    `json:"freestyle9100Count"`
+	}
+	solutions := make([]SolutionInput, 0)
+	for i, loc := range s.Config.Locations {
+		sol := SolutionInput{
+			LocationName: loc.Name,
+			F3:           bestGenome.Pairs[i].F3,
+			F9:           bestGenome.Pairs[i].F9,
+		}
+		solutions = append(solutions, sol)
+	}
+	solution := struct {
+		GameID    string          `json:"gameId"`
+		MapName   string          `json:"mapName"`
+		Locations []SolutionInput `json:"locations"`
+	}{
+		GameID:    gameID,
+		MapName:   s.Config.MapData.Name,
+		Locations: solutions,
+	}
+	err := json.NewEncoder(file).Encode(solution)
+	if err != nil {
+		return err
 	}
 	return nil
 }

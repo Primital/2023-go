@@ -9,7 +9,7 @@ import (
 	"2023-go/types"
 )
 
-const submit = true
+const submit = false
 
 func main() {
 	const APIKey = "74266cdf-1f38-403c-8766-044cc03d9162"
@@ -36,7 +36,7 @@ func main() {
 		MapData:                    mapData,
 		GeneralGameData:            generalGameData,
 		MutationProbability:        0.4,
-		GenerationImprovementLimit: 10000,
+		GenerationImprovementLimit: 500,
 	}
 
 	// Profile
@@ -73,6 +73,15 @@ func main() {
 		}
 		fmt.Printf("Submitted game %s\n", responseSol.ID)
 		fmt.Printf("Response: %v", responseSol.Score.Total)
-		solver.GetSolution()
+
+		fmt.Printf("Writing solution to file\n")
+		f, err = os.Create(fmt.Sprintf("solutions/solution-%s-%s.csv", mapData.Name, now.Format("2006-01-02-15-04-05")))
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+		if err := solver.WriteSolutionToFile(f, responseSol.ID); err != nil {
+			panic(err)
+		}
 	}
 }

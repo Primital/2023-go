@@ -12,21 +12,25 @@ type ScoredSolution struct {
 	GameId           string                            `json:"gameId"`
 	MapName          string                            `json:"mapName"`
 	Locations        map[string]types.LocationSolution `json:"locations"`
-	GameScore        map[string]float64                `json:"gameScore"`
+	GameScore        GameScore                         `json:"gameScore"`
 	TotalRevenue     float64                           `json:"totalRevenue"`
 	TotalLeasingCost float64                           `json:"totalLeasingCost"`
 	TotalF3100Count  int                               `json:"totalF3100Count"`
 	TotalF9100Count  int                               `json:"totalF9100Count"`
 }
 
+type GameScore struct {
+	KgCo2Savings  float64 `json:"KgCo2Savings"`
+	Earnings      float64 `json:"earnings"`
+	Total         float64 `json:"total"`
+	TotalFootfall float64 `json:"totalFootfall"`
+}
+
 func CalculateScore(solution map[string]types.LocationSolution, mapName string, generalData types.GeneralGameData, locations []*types.Location) (ScoredSolution, error) {
 	scoredSolution := ScoredSolution{
 		MapName:   mapName,
 		Locations: map[string]types.LocationSolution{},
-		GameScore: map[string]float64{
-			"co2Savings":    0.0,
-			"totalFootfall": 0.0,
-		},
+		GameScore: GameScore{},
 	}
 
 	locationListNoRefillStation := map[string]types.Location{}
@@ -102,21 +106,21 @@ func CalculateScore(solution map[string]types.LocationSolution, mapName string, 
 		scoredSolution.TotalF9100Count += loc.F9
 		scoredSolution.TotalRevenue += newLoc.Revenue
 		scoredSolution.TotalLeasingCost += newLoc.LeasingCost
-		scoredSolution.GameScore["co2Savings"] += newLoc.Co2Saving / 1000
-		scoredSolution.GameScore["totalFootfall"] += loc.Footfall / 1000
+		scoredSolution.GameScore.KgCo2Savings += newLoc.Co2Saving / 1000
+		scoredSolution.GameScore.TotalFootfall += loc.Footfall / 1000
 	}
 	scoredSolution.TotalRevenue = internal.RoundFloatByN(scoredSolution.TotalRevenue, 2)
-	scoredSolution.GameScore["co2Savings"] = internal.RoundFloatByN(scoredSolution.GameScore["co2Savings"], 2)
+	scoredSolution.GameScore.KgCo2Savings = internal.RoundFloatByN(scoredSolution.GameScore.KgCo2Savings, 2)
 	// scoredSolution.GameScore["co2Savings"] = RoundFloatByN(
 	// 	scoredSolution.GameScore["co2Savings"]-
 	// 		float64(scoredSolution.TotalF3100Count)*generalData.Freestyle3100Data.StaticCo2/1000-
 	// 		float64(scoredSolution.TotalF9100Count)*generalData.Freestyle9100Data.StaticCo2/1000,
 	// 	2)
-	scoredSolution.GameScore["earnings"] = (scoredSolution.TotalRevenue - scoredSolution.TotalLeasingCost) / 1000
-	scoredSolution.GameScore["totalFootfall"] = internal.RoundFloatByN(scoredSolution.GameScore["totalFootfall"], 4)
-	scoredSolution.GameScore["total"] = internal.RoundFloatByN(
-		(scoredSolution.GameScore["co2Savings"]*generalData.Co2PricePerKiloInSek+scoredSolution.GameScore["earnings"])*
-			(1+scoredSolution.GameScore["totalFootfall"]),
+	scoredSolution.GameScore.Earnings = (scoredSolution.TotalRevenue - scoredSolution.TotalLeasingCost) / 1000
+	scoredSolution.GameScore.TotalFootfall = internal.RoundFloatByN(scoredSolution.GameScore.TotalFootfall, 4)
+	scoredSolution.GameScore.Total = internal.RoundFloatByN(
+		(scoredSolution.GameScore.KgCo2Savings*generalData.Co2PricePerKiloInSek+scoredSolution.GameScore.Earnings)*
+			(1+scoredSolution.GameScore.TotalFootfall),
 		2)
 	return scoredSolution, nil
 }

@@ -151,7 +151,7 @@ func (g *Genome) Evaluate(locations []*types.Location, mapData types.MapData, ge
 	if err != nil {
 		panic(err)
 	}
-	g.Score = scoredSolution.GameScore["total"]
+	g.Score = scoredSolution.GameScore.Total
 
 }
 
