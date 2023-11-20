@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"2023-go/internal"
+	"2023-go/types"
 )
 
 const submit = true
@@ -12,7 +15,7 @@ func main() {
 	const APIKey = "74266cdf-1f38-403c-8766-044cc03d9162"
 	const BaseURL = "https://api.considition.com"
 	client := NewClient(APIKey, BaseURL)
-	mapData, err := client.GetMapData("goteborg")
+	mapData, err := client.GetMapData("uppsala")
 	if err != nil {
 		panic(err)
 	}
@@ -21,19 +24,19 @@ func main() {
 		panic(err)
 	}
 
-	locations := make([]*Location, len(mapData.Locations))
+	locations := make([]*types.Location, len(mapData.Locations))
 	for i := 1; i <= len(mapData.Locations); i++ {
 		mapLoc := mapData.Locations[fmt.Sprintf("location%d", i)]
 		locations[i-1] = &mapLoc
 	}
-	PrecalculateNeighborDistances(locations)
+	internal.PrecalculateNeighborDistances(locations, generalGameData)
 	solverConfig := SolverConfig{
-		PopulationSize:             100,
+		PopulationSize:             500,
 		Locations:                  locations,
 		MapData:                    mapData,
 		GeneralGameData:            generalGameData,
-		MutationProbability:        0.3,
-		GenerationImprovementLimit: 2000,
+		MutationProbability:        0.4,
+		GenerationImprovementLimit: 10000,
 	}
 
 	// Profile
@@ -49,7 +52,7 @@ func main() {
 	// defer pprof.StopCPUProfile()
 
 	solver := NewSolver(solverConfig)
-	solver.Run()
+	solver.Optimize()
 
 	fmt.Printf("Best solution (Generation %d): %.f\n", solver.LatestImprovement, solver.BestGenome.Score)
 
@@ -70,5 +73,6 @@ func main() {
 		}
 		fmt.Printf("Submitted game %s\n", responseSol.ID)
 		fmt.Printf("Response: %v", responseSol.Score.Total)
+		solver.GetSolution()
 	}
 }

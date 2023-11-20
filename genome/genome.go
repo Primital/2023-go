@@ -1,9 +1,12 @@
-package main
+package genome
 
 import (
 	"fmt"
 	"math"
 	"math/rand"
+
+	"2023-go/scoring"
+	"2023-go/types"
 )
 
 type Pair struct {
@@ -19,8 +22,8 @@ type Genome struct {
 func NewRandomGenome(rng *rand.Rand, locations int) *Genome {
 	pairs := make([]Pair, locations)
 	for i := 0; i < locations; i++ {
-		f3 := rng.Intn(2)
-		f9 := rng.Intn(2)
+		f3 := rng.Intn(3)
+		f9 := rng.Intn(3)
 		pairs[i] = Pair{
 			F3: f3,
 			F9: f9,
@@ -52,7 +55,7 @@ func (g *Genome) Mutate2(mutationProb float64) {
 			newVal := math.Max(0, float64(g.Pairs[i].F3-1))
 			g.Pairs[i].F3 = int(newVal)
 		} else {
-			newVal := math.Min(5, float64(g.Pairs[i].F3+1))
+			newVal := math.Min(2, float64(g.Pairs[i].F3+1))
 			g.Pairs[i].F3 = int(newVal)
 		}
 	}
@@ -62,7 +65,7 @@ func (g *Genome) Mutate2(mutationProb float64) {
 			newVal := math.Max(0, float64(g.Pairs[i].F9-1))
 			g.Pairs[i].F9 = int(newVal)
 		} else {
-			newVal := math.Min(5, float64(g.Pairs[i].F9+1))
+			newVal := math.Min(2, float64(g.Pairs[i].F9+1))
 			g.Pairs[i].F9 = int(newVal)
 		}
 	}
@@ -76,7 +79,7 @@ func (g *Genome) Mutate(mutationProb float64) {
 				newVal := math.Max(0, float64(g.Pairs[i].F3-1))
 				g.Pairs[i].F3 = int(newVal)
 			} else {
-				newVal := math.Min(5, float64(g.Pairs[i].F3+1))
+				newVal := math.Min(2, float64(g.Pairs[i].F3+1))
 				g.Pairs[i].F3 = int(newVal)
 			}
 		}
@@ -86,7 +89,7 @@ func (g *Genome) Mutate(mutationProb float64) {
 				newVal := math.Max(0, float64(g.Pairs[i].F9-1))
 				g.Pairs[i].F9 = int(newVal)
 			} else {
-				newVal := math.Min(5, float64(g.Pairs[i].F9+1))
+				newVal := math.Min(2, float64(g.Pairs[i].F9+1))
 				g.Pairs[i].F9 = int(newVal)
 			}
 		}
@@ -120,18 +123,18 @@ func (g *Genome) CrossoverSinglePair(other *Genome) (*Genome, *Genome) {
 	return c1, c2
 }
 
-func (g *Genome) Evaluate(locations []*Location, mapData MapData, generalData GeneralGameData) {
-	genomeLocation := make(map[string]LocationSolution)
+func (g *Genome) Evaluate(locations []*types.Location, mapData types.MapData, generalData types.GeneralGameData) {
+	genomeLocation := make(map[string]types.LocationSolution)
 	for j, loc := range locations {
-		genomeLocation[loc.Name] = LocationSolution{
+		genomeLocation[loc.Name] = types.LocationSolution{
 			Location: *loc,
 			F3:       g.Pairs[j].F3,
 			F9:       g.Pairs[j].F9,
 		}
 	}
 
-	filterEmptyLocations := func(solution map[string]LocationSolution) map[string]LocationSolution {
-		filtered := make(map[string]LocationSolution)
+	filterEmptyLocations := func(solution map[string]types.LocationSolution) map[string]types.LocationSolution {
+		filtered := make(map[string]types.LocationSolution)
 		for _, loc := range solution {
 			if loc.F3 > 0 || loc.F9 > 0 {
 				filtered[loc.Location.Name] = loc
@@ -144,7 +147,7 @@ func (g *Genome) Evaluate(locations []*Location, mapData MapData, generalData Ge
 		g.Score = 0
 		return
 	}
-	scoredSolution, err := CalculateScore(filtered, mapData.Name, generalData, locations)
+	scoredSolution, err := scoring.CalculateScore(filtered, mapData.Name, generalData, locations)
 	if err != nil {
 		panic(err)
 	}

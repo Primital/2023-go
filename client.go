@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+
+	"2023-go/scoring"
+	"2023-go/types"
 )
 
 type Client struct {
@@ -26,7 +29,7 @@ func NewClient(apiKey string, baseUrl string) *Client {
 	}
 }
 
-func (c *Client) GetMapData(mapName string) (*MapData, error) {
+func (c *Client) GetMapData(mapName string) (*types.MapData, error) {
 	request, err := http.NewRequest("GET", fmt.Sprintf("%s/api/Game/getMapData?mapName=%s", c.baseUrl, mapName), nil)
 	if err != nil {
 		return nil, err
@@ -41,7 +44,7 @@ func (c *Client) GetMapData(mapName string) (*MapData, error) {
 		return nil, fmt.Errorf(fmt.Sprintf("unexpected status code: %d", resp.StatusCode))
 	}
 
-	var mapData MapData
+	var mapData types.MapData
 	err = json.NewDecoder(resp.Body).Decode(&mapData)
 	if err != nil {
 		return nil, err
@@ -50,7 +53,7 @@ func (c *Client) GetMapData(mapName string) (*MapData, error) {
 	return &mapData, nil
 }
 
-func (c *Client) GetGeneralData() (*GeneralGameData, error) {
+func (c *Client) GetGeneralData() (*types.GeneralGameData, error) {
 	request, err := http.NewRequest("GET", fmt.Sprintf("%s/api/Game/getGeneralGameData", c.baseUrl), nil)
 	if err != nil {
 		return nil, err
@@ -65,7 +68,7 @@ func (c *Client) GetGeneralData() (*GeneralGameData, error) {
 		return nil, fmt.Errorf(fmt.Sprintf("unexpected status code: %d", resp.StatusCode))
 	}
 
-	var generalData GeneralGameData
+	var generalData types.GeneralGameData
 	err = json.NewDecoder(resp.Body).Decode(&generalData)
 	if err != nil {
 		return nil, err
@@ -74,7 +77,7 @@ func (c *Client) GetGeneralData() (*GeneralGameData, error) {
 	return &generalData, nil
 }
 
-func (c *Client) SubmitSolution(mapName string, solution ScoredSolution) (*GameData, error) {
+func (c *Client) SubmitSolution(mapName string, solution scoring.ScoredSolution) (*types.GameData, error) {
 	submitLocations := make(map[string]map[string]int)
 	for _, loc := range solution.Locations {
 		submitLocations[loc.Location.Name] = map[string]int{
@@ -117,7 +120,7 @@ func (c *Client) SubmitSolution(mapName string, solution ScoredSolution) (*GameD
 		return nil, fmt.Errorf(fmt.Sprintf("unexpected status code: %d", resp.StatusCode))
 	}
 
-	var gameData GameData
+	var gameData types.GameData
 	err = json.NewDecoder(resp.Body).Decode(&gameData)
 	if err != nil {
 		return nil, err

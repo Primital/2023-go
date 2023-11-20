@@ -1,4 +1,4 @@
-package main
+package types
 
 // MapData types
 type (
@@ -25,7 +25,7 @@ type (
 		Footfall          float64 `json:"footfall"`
 		FootfallScale     float64 `json:"footfallScale"`
 		SalesVolume       float64 `json:"salesVolume"`
-		neighborDistances map[string]float64
+		NeighborDistances map[string]float64
 	}
 
 	HotSpot struct {
@@ -100,33 +100,4 @@ type GameScore struct {
 	Earnings      float64 `json:"earnings"`
 	TotalFootfall float64 `json:"totalFootfall"`
 	Total         float64 `json:"total"`
-}
-
-func (l Location) GetLocationsWithinWalkingDistance(locations map[string]LocationSolution, data GeneralGameData) map[string]float64 {
-	lat, long := l.Latitude, l.Longitude
-	locs := make(map[string]float64)
-	for _, loc := range locations {
-		if loc.Location.Name == l.Name {
-			continue
-		}
-		if hav := haversine(lat, long, loc.Location.Latitude, loc.Location.Longitude); hav <= data.WillingnessToTravelInMeters {
-			locs[loc.Location.Name] = hav
-		}
-	}
-	return locs
-}
-
-func PrecalculateNeighborDistances(locations []*Location) {
-	for _, loc := range locations {
-		loc.neighborDistances = make(map[string]float64)
-		for _, other := range locations {
-			if loc.Name == other.Name {
-				continue
-			}
-			dist := haversine(loc.Latitude, loc.Longitude, other.Latitude, other.Longitude)
-			if dist <= 150.0 {
-				loc.neighborDistances[other.Name] = dist
-			}
-		}
-	}
 }
