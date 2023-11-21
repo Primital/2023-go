@@ -150,13 +150,11 @@ func distributeSales(scoredLocations map[string]types.LocationSolution, location
 func divideFootfall(scoredLocations map[string]types.LocationSolution, generalData types.GeneralGameData) map[string]types.LocationSolution {
 	for key, loc := range scoredLocations {
 		count := 1
-		for neighbor, distance := range loc.NeighborDistances {
-			if key == neighbor {
+		for neighbor, _ := range loc.NeighborDistances {
+			if _, neighborHasStation := scoredLocations[neighbor]; !neighborHasStation {
 				continue
 			}
-			if distance < generalData.WillingnessToTravelInMeters {
-				count++
-			}
+			count++
 		}
 		sLoc := types.LocationSolution{
 			Location: types.Location{
