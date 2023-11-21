@@ -111,11 +111,6 @@ func CalculateScore(solution map[string]types.LocationSolution, mapName string, 
 	}
 	scoredSolution.TotalRevenue = internal.RoundFloatByN(scoredSolution.TotalRevenue, 2)
 	scoredSolution.GameScore.KgCo2Savings = internal.RoundFloatByN(scoredSolution.GameScore.KgCo2Savings, 2)
-	// scoredSolution.GameScore["co2Savings"] = RoundFloatByN(
-	// 	scoredSolution.GameScore["co2Savings"]-
-	// 		float64(scoredSolution.TotalF3100Count)*generalData.Freestyle3100Data.StaticCo2/1000-
-	// 		float64(scoredSolution.TotalF9100Count)*generalData.Freestyle9100Data.StaticCo2/1000,
-	// 	2)
 	scoredSolution.GameScore.Earnings = (scoredSolution.TotalRevenue - scoredSolution.TotalLeasingCost) / 1000
 	scoredSolution.GameScore.TotalFootfall = internal.RoundFloatByN(scoredSolution.GameScore.TotalFootfall, 4)
 	scoredSolution.GameScore.Total = internal.RoundFloatByN(
@@ -127,25 +122,23 @@ func CalculateScore(solution map[string]types.LocationSolution, mapName string, 
 
 func distributeSales(scoredLocations map[string]types.LocationSolution, locationListNoRefillStation map[string]types.Location, generalData types.GeneralGameData) map[string]types.LocationSolution {
 	for _, loc := range locationListNoRefillStation {
-		key := loc.Name
 		distributeTo := make(map[string]float64)
-		locationWithoutRefillStation, ok := locationListNoRefillStation[key]
-		if !ok {
-			continue
-		}
 		locationsWithinWalkingDistance := loc.NeighborDistances
 		total := 0.0
 
 		for locName, dist := range locationsWithinWalkingDistance {
+			if _, inSolution := scoredLocations[locName]; !inSolution {
+				continue
+			}
 			distributeTo[locName] = math.Pow(generalData.ConstantExpDistributionFunction, generalData.WillingnessToTravelInMeters-dist) - 1.0
 			total += distributeTo[locName]
 		}
 
-		for locName, dist := range distributeTo {
+		for locName, distribution := range distributeTo {
 			if total == 0.0 {
 				continue
 			}
-			newSalesVolume := dist / total * generalData.RefillDistributionRate * locationWithoutRefillStation.SalesVolume
+			newSalesVolume := distribution * generalData.RefillDistributionRate * loc.SalesVolume / total
 			sLoc := scoredLocations[locName]
 			sLoc.SalesVolume += newSalesVolume
 			scoredLocations[locName] = sLoc
