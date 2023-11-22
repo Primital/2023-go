@@ -1,9 +1,8 @@
-package main
+package solver
 
 import (
 	"encoding/csv"
 	"encoding/json"
-	"fmt"
 	"log"
 	"math"
 	"math/rand"
@@ -70,16 +69,16 @@ func (s *Solver) Optimize() {
 	s.SeedPopulation()
 	for generation := 0; generation-s.LatestImprovement < s.Config.GenerationImprovementLimit; generation++ {
 		// for generation := 0; generation < 800; generation++ {
-		// for generation := 0; s.BestSolution < 6164; generation++ {
+		// for generation := 0; s.BestSolution < 6168.51; generation++ {
 		s.Generation = generation
-		fmt.Printf("Generation %d:\t", generation)
+		// fmt.Printf("Generation %d:\t", generation)
 		s.EvaluatePopulation()
 		s.RankPopulation(generation)
 		s.CalculateDiversity()
-		fmt.Printf("Best solution: %f\t", s.BestSolution)
+		// fmt.Printf("Best solution: %f\t", s.BestSolution)
 		// fmt.Printf("Worst solution: %f\t", s.WorstSolution)
 		// fmt.Printf("Average score: %f\t", s.AverageScore)
-		fmt.Printf("Diversity: %f\n", s.Diversity)
+		// fmt.Printf("Diversity: %f\n", s.Diversity)
 		s.OptLog = append(s.OptLog, OptimizationLog{
 			Generation:    generation,
 			BestSolution:  s.BestSolution,
@@ -175,7 +174,7 @@ func (s *Solver) Mutate() {
 		// if mutate threshold is met, mutate genome
 		mutProb := s.Config.MutationProbability
 		if s.Diversity < 0.4 {
-			mutProb += (0.4 - s.Diversity)
+			mutProb += 2 * (0.4 - s.Diversity)
 		}
 		if rand.Float64() < s.Config.MutationProbability {
 			// if rand.Float64() < genome.Score/s.BestGenome.Score {
