@@ -69,15 +69,17 @@ func NewSolver(cfg SolverConfig) *Solver {
 func (s *Solver) Optimize() {
 	s.SeedPopulation()
 	for generation := 0; generation-s.LatestImprovement < s.Config.GenerationImprovementLimit; generation++ {
+		// for generation := 0; generation < 800; generation++ {
+		// for generation := 0; s.BestSolution < 6164; generation++ {
 		s.Generation = generation
-		// fmt.Printf("Generation %d:\t", generation)
+		fmt.Printf("Generation %d:\t", generation)
 		s.EvaluatePopulation()
 		s.RankPopulation(generation)
 		s.CalculateDiversity()
-		// fmt.Printf("Best solution: %f\t", s.BestSolution)
+		fmt.Printf("Best solution: %f\t", s.BestSolution)
 		// fmt.Printf("Worst solution: %f\t", s.WorstSolution)
 		// fmt.Printf("Average score: %f\t", s.AverageScore)
-		// fmt.Printf("Diversity: %f\n", s.Diversity)
+		fmt.Printf("Diversity: %f\n", s.Diversity)
 		s.OptLog = append(s.OptLog, OptimizationLog{
 			Generation:    generation,
 			BestSolution:  s.BestSolution,
@@ -92,7 +94,7 @@ func (s *Solver) Optimize() {
 		randomSize := int(math.Round(float64(s.Config.PopulationSize) / 10))
 		newRandomGenomes := make([]*genome.Genome, randomSize)
 		for i := 0; i < randomSize; i++ {
-			newRandomGenomes[i] = genome.NewRandomGenome(s.RNG, len(s.Config.Locations))
+			newRandomGenomes[i] = genome.NewRandomGenome2(s.RNG, len(s.Config.Locations))
 		}
 		s.Replace(cloned, babies, newRandomGenomes)
 		s.Mutate()
@@ -128,7 +130,7 @@ func (s *Solver) RankPopulation(generation int) {
 	if s.BestGenome == nil || s.BestGenome.Score < s.BestSolution {
 		s.BestGenome = s.Population[0].Copy()
 		s.LatestImprovement = generation
-		fmt.Printf("(Generation %d)\tNew best: %f\n", s.Generation, s.BestGenome.Score)
+		// fmt.Printf("(Generation %d)\tNew best: %f\n", s.Generation, s.BestGenome.Score)
 	}
 	s.Population = append([]*genome.Genome{s.BestGenome.Copy()}, s.Population[:s.Config.PopulationSize-1]...)
 	s.WorstSolution = s.Population[len(s.Population)-1].Score
@@ -171,10 +173,16 @@ func (s *Solver) Mutate() {
 			continue // don't mutate the best genome
 		}
 		// if mutate threshold is met, mutate genome
-		// if rand.Float64() < s.Config.MutationProbability {
-		if rand.Float64() < genome.Score/s.BestGenome.Score {
+		mutProb := s.Config.MutationProbability
+		if s.Diversity < 0.4 {
+			mutProb += (0.4 - s.Diversity)
+		}
+		if rand.Float64() < s.Config.MutationProbability {
+			// if rand.Float64() < genome.Score/s.BestGenome.Score {
 			// genome.Mutate2(s.Config.MutationProbability)
-			genome.Mutate2((math.Log(3) - s.Diversity) / 2)
+			// genome.Mutate2((math.Sqrt(3) - s.Diversity) / 2)
+			// genome.MutateNeighbors((math.Sqrt(3)-s.Diversity)/2, s.Config.Locations)
+			genome.MutateNeighbors(s.Config.MutationProbability, s.Config.Locations)
 		}
 	}
 }
@@ -311,6 +319,8 @@ type (
 	}
 )
 
+var sqrt3 = math.Sqrt(3)
+
 func (s *Solver) CalculateDiversity() {
 	// calculate diversity
 	geneCount := make([]DiversityPair, len(s.Config.Locations))
@@ -356,7 +366,7 @@ func (s *Solver) CalculateDiversity() {
 	}
 	diversity := totalDiversity / float64(len(diversityShannon))
 
-	s.Diversity = diversity
+	s.Diversity = diversity / sqrt3
 }
 
 func ShannonDiversityIndex(counts StationCounts) float64 {

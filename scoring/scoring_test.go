@@ -7,12 +7,13 @@ import (
 	"testing"
 
 	"2023-go/genome"
+	"2023-go/internal"
 	"2023-go/scoring"
 	"2023-go/types"
 )
 
 func Test_ScoreSolution(t *testing.T) {
-	validationSolution, err := LoadValidationData()
+	validationSolution, err := LoadValidationData("validation_uppsala.json")
 	if err != nil {
 		panic(err)
 	}
@@ -43,18 +44,19 @@ func Test_ScoreSolution(t *testing.T) {
 
 	orderedLocations := make([]*types.Location, len(mapData.Locations))
 	pairs := make([]genome.Pair, len(mapData.Locations))
-	for i := 1; i <= len(mapData.Locations); i++ {
-		locName := fmt.Sprintf("location%d", i)
+	for i := 0; i < len(mapData.Locations); i++ {
+		locName := fmt.Sprintf("location%d", i+1)
 		loc := mapData.Locations[locName]
-		orderedLocations[i-1] = &loc
+		orderedLocations[i] = &loc
 		validationLocation, ok := validationSolution.Locations[locName]
 		if ok {
-			pairs[i-1] = genome.Pair{
+			pairs[i] = genome.Pair{
 				F3: validationLocation.Freestyle3100Count,
 				F9: validationLocation.Freestyle9100Count,
 			}
 		}
 	}
+	internal.PrecalculateNeighborDistances(orderedLocations, &generalGameData)
 
 	// Populate genome with values from validationSolution
 	bestGenome := genome.Genome{
@@ -193,8 +195,9 @@ type (
 	}
 )
 
-func LoadValidationData() (TestScore, error) {
-	f, err := os.OpenFile("validation_uppsala.json", os.O_RDONLY, 0644)
+func LoadValidationData(path string) (TestScore, error) {
+	// f, err := os.OpenFile("validation_uppsala.json", os.O_RDONLY, 0644)
+	f, err := os.OpenFile(path, os.O_RDONLY, 0644)
 	if err != nil {
 		return TestScore{}, err
 	}

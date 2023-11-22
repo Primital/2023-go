@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"strconv"
 
 	"2023-go/scoring"
 	"2023-go/types"
@@ -24,6 +25,25 @@ func NewRandomGenome(rng *rand.Rand, locations int) *Genome {
 	for i := 0; i < locations; i++ {
 		f3 := rng.Intn(3)
 		f9 := rng.Intn(3)
+		pairs[i] = Pair{
+			F3: f3,
+			F9: f9,
+		}
+	}
+	return &Genome{
+		Pairs: pairs,
+	}
+}
+
+func NewRandomGenome2(rng *rand.Rand, locations int) *Genome {
+	pairs := make([]Pair, locations)
+	for i := 0; i < locations; i++ {
+		f3, f9 := 0, 0
+		// 0.5 seems solid
+		if rng.Float64() < 0.5 {
+			f3 = rng.Intn(3)
+			f9 = rng.Intn(3)
+		}
 		pairs[i] = Pair{
 			F3: f3,
 			F9: f9,
@@ -67,6 +87,48 @@ func (g *Genome) Mutate2(mutationProb float64) {
 		} else {
 			newVal := math.Min(2, float64(g.Pairs[i].F9+1))
 			g.Pairs[i].F9 = int(newVal)
+		}
+	}
+}
+
+func (g *Genome) MutateNeighbors(mutationProb float64, locations []*types.Location) {
+	geneIndex := rand.Intn(len(g.Pairs))
+	location := locations[geneIndex]
+	genesToMutate := []int{geneIndex}
+	neighbors := location.NeighborDistances
+	for neighbor, _ := range neighbors {
+		/*
+			neighbor is a string of format location%d where %d is the index+1
+			need to extract the index from the string to use in the genesToMutate array
+		*/
+		neighborIndexStr := neighbor[8:]
+		neighborIndex, err := strconv.Atoi(neighborIndexStr)
+		if err != nil {
+			panic(err)
+		}
+		genesToMutate = append(genesToMutate, neighborIndex-1)
+	}
+
+	for _, i := range genesToMutate {
+		if rand.Float64() < mutationProb {
+			negative := rand.Float64() < 0.5
+			if negative {
+				newVal := math.Max(0, float64(g.Pairs[i].F3-1))
+				g.Pairs[i].F3 = int(newVal)
+			} else {
+				newVal := math.Min(2, float64(g.Pairs[i].F3+1))
+				g.Pairs[i].F3 = int(newVal)
+			}
+		}
+		if rand.Float64() < mutationProb {
+			negative := rand.Float64() < 0.5
+			if negative {
+				newVal := math.Max(0, float64(g.Pairs[i].F9-1))
+				g.Pairs[i].F9 = int(newVal)
+			} else {
+				newVal := math.Min(2, float64(g.Pairs[i].F9+1))
+				g.Pairs[i].F9 = int(newVal)
+			}
 		}
 	}
 }

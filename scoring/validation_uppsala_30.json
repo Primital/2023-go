@@ -1,0 +1,37 @@
+{
+  "mapName": "uppsala",
+  "gameScore": {
+    "kgCo2Savings": 37.79,
+    "earnings": 8.502,
+    "totalFootfall": 0.0014,
+    "total": 48.63
+  },
+  "teamId": "2476b40a-5c9f-4d50-25f5-08dbdec78de7",
+  "teamName": "berrasfactory",
+  "totalFreestyle9100Count": 0,
+  "totalFreestyle3100Count": 1,
+  "totalLeasingCost": 598.0,
+  "totalRevenue": 9100.0,
+  "locations": {
+    "location30": {
+      "locationName": "location30",
+      "locationType": "Kiosk",
+      "latitude": 59.857583,
+      "longitude": 17.6461785,
+      "footfall": 1.3739207065837167,
+      "footfallScale": 10,
+      "salesVolume": 87.0,
+      "salesCapacity": 70.0,
+      "leasingCost": 598.0,
+      "revenue": 9100.0,
+      "earnings": 8502.0,
+      "freestyle9100Count": 0,
+      "freestyle3100Count": 1,
+      "gramCo2Savings": 37790.0,
+      "isProfitable": true,
+      "isCo2Saving": true
+    }
+  },
+  "id": "9a424980-c03f-4a2d-8a31-bc6cf429d644",
+  "timestamp": "2023-11-20T16:33:40.0683688+00:00"
+}
