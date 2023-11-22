@@ -3,6 +3,7 @@ package solver
 import (
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
@@ -65,20 +66,22 @@ func NewSolver(cfg SolverConfig) *Solver {
 	}
 }
 
-func (s *Solver) Optimize() {
+func (s *Solver) Optimize(debug bool) {
 	s.SeedPopulation()
 	for generation := 0; generation-s.LatestImprovement < s.Config.GenerationImprovementLimit; generation++ {
 		// for generation := 0; generation < 800; generation++ {
 		// for generation := 0; s.BestSolution < 6168.51; generation++ {
 		s.Generation = generation
-		// fmt.Printf("Generation %d:\t", generation)
 		s.EvaluatePopulation()
 		s.RankPopulation(generation)
 		s.CalculateDiversity()
-		// fmt.Printf("Best solution: %f\t", s.BestSolution)
-		// fmt.Printf("Worst solution: %f\t", s.WorstSolution)
-		// fmt.Printf("Average score: %f\t", s.AverageScore)
-		// fmt.Printf("Diversity: %f\n", s.Diversity)
+		if debug {
+			fmt.Printf("Generation %d:\t", generation)
+			fmt.Printf("Best solution: %f\t", s.BestSolution)
+			fmt.Printf("Worst solution: %f\t", s.WorstSolution)
+			fmt.Printf("Average score: %f\t", s.AverageScore)
+			fmt.Printf("Diversity: %f\n", s.Diversity)
+		}
 		s.OptLog = append(s.OptLog, OptimizationLog{
 			Generation:    generation,
 			BestSolution:  s.BestSolution,
@@ -344,13 +347,14 @@ func (s *Solver) CalculateDiversity() {
 			}
 		}
 	}
+	popSize := float64(s.Config.PopulationSize)
 	for i := 0; i < len(geneCount); i++ {
-		geneCount[i].F3.Zero /= float64(s.Config.PopulationSize)
-		geneCount[i].F3.One /= float64(s.Config.PopulationSize)
-		geneCount[i].F3.Two /= float64(s.Config.PopulationSize)
-		geneCount[i].F9.Zero /= float64(s.Config.PopulationSize)
-		geneCount[i].F9.One /= float64(s.Config.PopulationSize)
-		geneCount[i].F9.Two /= float64(s.Config.PopulationSize)
+		geneCount[i].F3.Zero /= popSize
+		geneCount[i].F3.One /= popSize
+		geneCount[i].F3.Two /= popSize
+		geneCount[i].F9.Zero /= popSize
+		geneCount[i].F9.One /= popSize
+		geneCount[i].F9.Two /= popSize
 	}
 
 	diversityShannon := make([]float64, 0, len(geneCount)*2)

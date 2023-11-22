@@ -11,7 +11,8 @@ import (
 	"2023-go/types"
 )
 
-const submit = true
+const submit = false
+const debug = true
 
 func main() {
 	const APIKey = "74266cdf-1f38-403c-8766-044cc03d9162"
@@ -54,7 +55,7 @@ func main() {
 	// defer pprof.StopCPUProfile()
 
 	solver := solver2.NewSolver(solverConfig)
-	solver.Optimize()
+	solver.Optimize(debug)
 
 	fmt.Printf("Best solution (Generation %d): %.f\n", solver.LatestImprovement, solver.BestGenome.Score)
 	//
