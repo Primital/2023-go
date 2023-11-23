@@ -255,7 +255,7 @@ func (s *Solver) WriteOptimizationLogToFile(file *os.File) error {
 	defer writer.Flush()
 
 	// Write the CSV header
-	header := []string{"generation", "best_solution", "worst_solution", "average_score"}
+	header := []string{"generation", "best_solution", "worst_solution", "average_score", "diversity"}
 	if err := writer.Write(header); err != nil {
 		log.Fatal(err)
 	}
@@ -267,6 +267,7 @@ func (s *Solver) WriteOptimizationLogToFile(file *os.File) error {
 			strconv.FormatFloat(logEntry.BestSolution, 'f', -1, 64),
 			strconv.FormatFloat(logEntry.WorstSolution, 'f', -1, 64),
 			strconv.FormatFloat(logEntry.AverageScore, 'f', -1, 64),
+			strconv.FormatFloat(logEntry.Diversity, 'f', -1, 64),
 		}
 
 		if err := writer.Write(record); err != nil {

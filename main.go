@@ -39,7 +39,7 @@ func main() {
 		MapData:                    mapData,
 		GeneralGameData:            generalGameData,
 		MutationProbability:        0.3,
-		GenerationImprovementLimit: 5000,
+		GenerationImprovementLimit: 2000,
 	}
 
 	// Profile
