@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
+	"os/signal"
+	"syscall"
 
 	"2023-go/api"
 	"2023-go/internal"
@@ -11,14 +12,29 @@ import (
 	"2023-go/types"
 )
 
-const submit = false
-const debug = true
+const submit = true
+const debug = false
 
 func main() {
+	seedFilePath := ""
+	if len(os.Args) > 1 {
+		seedFilePath = os.Args[1]
+		fmt.Printf("Using seed file %s\n", seedFilePath)
+	}
+
+	// Create a channel to receive signals.
+	sigCh := make(chan os.Signal, 1)
+
+	// Register the SIGINT signal (interrupt signal) to the signal channel.
+	signal.Notify(sigCh, syscall.SIGINT)
+
+	// Create a channel to wait for an exit signal.
+	// exitCh := make(chan struct{})
+
 	const APIKey = "74266cdf-1f38-403c-8766-044cc03d9162"
 	const BaseURL = "https://api.considition.com"
 	client := api.NewClient(APIKey, BaseURL)
-	mapData, err := client.GetMapData("goteborg")
+	mapData, err := client.GetMapData("berlin")
 	if err != nil {
 		panic(err)
 	}
@@ -33,12 +49,12 @@ func main() {
 		locations[i] = &mapLoc
 	}
 	internal.PrecalculateNeighborDistances(locations, generalGameData)
-	solverConfig := solver2.SolverConfig{
-		PopulationSize:             500,
+	solverConfig := solver2.Config{
+		PopulationSize:             200,
 		Locations:                  locations,
 		MapData:                    mapData,
 		GeneralGameData:            generalGameData,
-		MutationProbability:        0.3,
+		MutationProbability:        0.4,
 		GenerationImprovementLimit: 2000,
 	}
 
@@ -55,18 +71,46 @@ func main() {
 	// defer pprof.StopCPUProfile()
 
 	solver := solver2.NewSolver(solverConfig)
+
+	// Goroutine to handle signals.
+	go func(solver *solver2.Solver) {
+		for {
+			select {
+			case sig := <-sigCh:
+				switch sig {
+				case syscall.SIGINT:
+					fmt.Println("Received SIGINT. Submitting and saving")
+					solver.Finish()
+				}
+			}
+		}
+	}(solver)
+
+	if seedFilePath != "" {
+		fmt.Printf("Loading seed file %s\n", seedFilePath)
+		seedFile, err := os.Open(seedFilePath)
+		if err != nil {
+			panic(err)
+		}
+		if err := solver.LoadSolutionFromFile(seedFile); err != nil {
+			panic(err)
+		}
+		fmt.Printf("Loaded seed file.\n")
+		seedFile.Close()
+	}
+
 	solver.Optimize(debug)
 
 	fmt.Printf("Best solution (Generation %d): %.f\n", solver.LatestImprovement, solver.BestGenome.Score)
 	//
 	// // write csv of optimization log to file
-	now := time.Now()
-	f, err := os.Create(fmt.Sprintf("optlogs/optlog-%s-%s.csv", mapData.Name, now.Format("2006-01-02-15-04-05")))
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	solver.WriteOptimizationLogToFile(f)
+	// now := time.Now()
+	// optLogFile, err := os.Create(fmt.Sprintf("optlogs/optlog-%s-%s.csv", mapData.Name, now.Format("2006-01-02-15-04-05")))
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer optLogFile.Close()
+	// solver.WriteOptimizationLogToFile(optLogFile)
 
 	if submit {
 		sol := solver.GetSolution()
@@ -78,13 +122,9 @@ func main() {
 		fmt.Printf("Response: %v\n", responseSol.Score.Total)
 
 		// fmt.Printf("Writing solution to file\n")
-		f, err := os.Create(fmt.Sprintf("solutions/solution-%s-%s.csv", mapData.Name, now.Format("2006-01-02-15-04-05")))
-		if err != nil {
-			panic(err)
-		}
-		defer f.Close()
-		if err := solver.WriteSolutionToFile(f, responseSol.ID); err != nil {
+		if err := solver.WriteSolutionToFile(responseSol.ID); err != nil {
 			panic(err)
 		}
 	}
+	// <-exitCh
 }

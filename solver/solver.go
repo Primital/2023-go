@@ -18,7 +18,7 @@ import (
 	"2023-go/types"
 )
 
-type SolverConfig struct {
+type Config struct {
 	GenerationLimit            int
 	PopulationSize             int
 	Locations                  []*types.Location
@@ -27,6 +27,7 @@ type SolverConfig struct {
 	MutationProbability        float64
 	ReproductionMethod         ReproductionMethod
 	GenerationImprovementLimit int
+	Debug                      bool
 }
 
 type ReproductionMethod string
@@ -39,7 +40,7 @@ var (
 )
 
 type Solver struct {
-	Config            SolverConfig
+	Config            Config
 	Population        []*genome.Genome
 	BestGenome        *genome.Genome
 	BestSolution      float64
@@ -50,6 +51,7 @@ type Solver struct {
 	OptLog            []OptimizationLog
 	LatestImprovement int
 	Generation        int
+	Finished          bool
 }
 
 type OptimizationLog struct {
@@ -60,15 +62,27 @@ type OptimizationLog struct {
 	Diversity     float64 `csv:"diversity"`
 }
 
-func NewSolver(cfg SolverConfig) *Solver {
+func NewSolver(cfg Config) *Solver {
 	return &Solver{
 		Config: cfg,
+		RNG:    rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 }
 
+func (s *Solver) Finish() {
+	fmt.Printf("Finishing...\n")
+	s.Finished = true
+}
+
 func (s *Solver) Optimize(debug bool) {
-	s.SeedPopulation()
-	for generation := 0; generation-s.LatestImprovement < s.Config.GenerationImprovementLimit; generation++ {
+	if s.Population == nil || len(s.Population) == 0 {
+		s.SeedPopulation()
+	}
+	// for generation := 0; generation-s.LatestImprovement < s.Config.GenerationImprovementLimit; generation++ {
+	for generation := 0; ; generation++ {
+		if s.Finished {
+			break
+		}
 		// for generation := 0; generation < 800; generation++ {
 		// for generation := 0; s.BestSolution < 6168.51; generation++ {
 		s.Generation = generation
@@ -89,6 +103,12 @@ func (s *Solver) Optimize(debug bool) {
 			AverageScore:  s.AverageScore,
 			Diversity:     s.Diversity,
 		})
+		if s.LatestImprovement-s.Generation > 1000 {
+			// Reached local optima, need to randomize more
+			s.Replace(s.Clone(s.Population), []*genome.Genome{}, []*genome.Genome{})
+			s.Mutate()
+			continue
+		}
 		cloningSelection := s.SelectForCloning()
 		cloned := s.Clone(cloningSelection)
 		crossoverSelection := s.SelectForCrossover()
@@ -104,7 +124,6 @@ func (s *Solver) Optimize(debug bool) {
 }
 
 func (s *Solver) SeedPopulation() {
-	s.RNG = rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < s.Config.PopulationSize; i++ {
 		s.Population = append(s.Population, genome.NewRandomGenome(s.RNG, len(s.Config.Locations)))
 	}
@@ -132,7 +151,7 @@ func (s *Solver) RankPopulation(generation int) {
 	if s.BestGenome == nil || s.BestGenome.Score < s.BestSolution {
 		s.BestGenome = s.Population[0].Copy()
 		s.LatestImprovement = generation
-		// fmt.Printf("(Generation %d)\tNew best: %f\n", s.Generation, s.BestGenome.Score)
+		fmt.Printf("(Generation %d)\tNew best: %f\n", s.Generation, s.BestGenome.Score)
 	}
 	s.Population = append([]*genome.Genome{s.BestGenome.Copy()}, s.Population[:s.Config.PopulationSize-1]...)
 	s.WorstSolution = s.Population[len(s.Population)-1].Score
@@ -179,18 +198,17 @@ func (s *Solver) Mutate() {
 		if s.Diversity < 0.4 {
 			mutProb += 2 * (0.4 - s.Diversity)
 		}
-		if rand.Float64() < s.Config.MutationProbability {
-			// if rand.Float64() < genome.Score/s.BestGenome.Score {
-			// genome.Mutate2(s.Config.MutationProbability)
-			// genome.Mutate2((math.Sqrt(3) - s.Diversity) / 2)
-			// genome.MutateNeighbors((math.Sqrt(3)-s.Diversity)/2, s.Config.Locations)
+		if s.LatestImprovement-s.Generation > 1000 {
+			genome.MutateNeighbors(1.0, s.Config.Locations)
+		} else if rand.Float64() < s.Config.MutationProbability {
 			genome.MutateNeighbors(s.Config.MutationProbability, s.Config.Locations)
 		}
 	}
 }
 
 func (s *Solver) Crossover(population []*genome.Genome) []*genome.Genome {
-	randomOrder := s.RNG.Perm(len(population))
+	lenPop := len(population)
+	randomOrder := s.RNG.Perm(lenPop)
 	babies := make([]*genome.Genome, len(population))
 	for i := 0; i < len(population); i += 2 {
 		// babies[i], babies[i+1] = population[randomOrder[i]].Crossover(population[randomOrder[i+1]])
@@ -277,7 +295,12 @@ func (s *Solver) WriteOptimizationLogToFile(file *os.File) error {
 	return nil
 }
 
-func (s *Solver) WriteSolutionToFile(file *os.File, gameID string) error {
+func (s *Solver) WriteSolutionToFile(gameID string) error {
+	file, err := os.Create(fmt.Sprintf("solutions/solution-%s-%s-%.2f.csv", s.Config.MapData.Name, time.Now().Format("2006-01-02-15-04-05"), s.BestSolution))
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
 	/* Write the solution as JSON to a file */
 	bestGenome := s.BestGenome
 	type SolutionInput struct {
@@ -303,10 +326,51 @@ func (s *Solver) WriteSolutionToFile(file *os.File, gameID string) error {
 		MapName:   s.Config.MapData.Name,
 		Locations: solutions,
 	}
-	err := json.NewEncoder(file).Encode(solution)
+	err = json.NewEncoder(file).Encode(solution)
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (s *Solver) LoadSolutionFromFile(file *os.File) error {
+	/* Load a solution from a file */
+	type SolutionInput struct {
+		LocationName string `json:"locationName"`
+		F3           int    `json:"freestyle3100Count"`
+		F9           int    `json:"freestyle9100Count"`
+	}
+	var solution struct {
+		GameID    string          `json:"gameId"`
+		MapName   string          `json:"mapName"`
+		Locations []SolutionInput `json:"locations"`
+	}
+	err := json.NewDecoder(file).Decode(&solution)
+	if err != nil {
+		return err
+	}
+
+	pairs := make([]genome.Pair, len(s.Config.Locations))
+	for _, p := range solution.Locations {
+		for i, loc := range s.Config.Locations {
+			if loc.Name == p.LocationName {
+				pairs[i] = genome.Pair{
+					F3: p.F3,
+					F9: p.F9,
+				}
+			}
+		}
+	}
+	g := genome.Genome{
+		Pairs: pairs,
+	}
+	s.BestGenome = &g
+	population := make([]*genome.Genome, s.Config.PopulationSize)
+	population[0] = &g
+	for i := 1; i < s.Config.PopulationSize; i++ {
+		population[i] = g.Copy()
+	}
+	s.Population = population
 	return nil
 }
 
