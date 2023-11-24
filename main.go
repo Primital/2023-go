@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"2023-go/api"
 	"2023-go/internal"
@@ -14,6 +15,7 @@ import (
 
 const submit = true
 const debug = false
+const logOptimization = false
 
 func main() {
 	seedFilePath := ""
@@ -27,9 +29,6 @@ func main() {
 
 	// Register the SIGINT signal (interrupt signal) to the signal channel.
 	signal.Notify(sigCh, syscall.SIGINT)
-
-	// Create a channel to wait for an exit signal.
-	// exitCh := make(chan struct{})
 
 	const APIKey = "74266cdf-1f38-403c-8766-044cc03d9162"
 	const BaseURL = "https://api.considition.com"
@@ -58,18 +57,6 @@ func main() {
 		GenerationImprovementLimit: 2000,
 	}
 
-	// Profile
-	// f, err := os.Create("cpu.prof")
-	// if err != nil {
-	// 	log.Fatal("could not create CPU profile: ", err)
-	// }
-	// defer f.Close()
-	//
-	// if err := pprof.StartCPUProfile(f); err != nil {
-	// 	log.Fatal("could not start CPU profile: ", err)
-	// }
-	// defer pprof.StopCPUProfile()
-
 	solver := solver2.NewSolver(solverConfig)
 
 	// Goroutine to handle signals.
@@ -95,22 +82,23 @@ func main() {
 		if err := solver.LoadSolutionFromFile(seedFile); err != nil {
 			panic(err)
 		}
-		fmt.Printf("Loaded seed file.\n")
 		seedFile.Close()
 	}
 
 	solver.Optimize(debug)
 
 	fmt.Printf("Best solution (Generation %d): %.f\n", solver.LatestImprovement, solver.BestGenome.Score)
-	//
+
 	// // write csv of optimization log to file
-	// now := time.Now()
-	// optLogFile, err := os.Create(fmt.Sprintf("optlogs/optlog-%s-%s.csv", mapData.Name, now.Format("2006-01-02-15-04-05")))
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// defer optLogFile.Close()
-	// solver.WriteOptimizationLogToFile(optLogFile)
+	if logOptimization {
+		now := time.Now()
+		optLogFile, err := os.Create(fmt.Sprintf("optlogs/optlog-%s-%s.csv", mapData.Name, now.Format("2006-01-02-15-04-05")))
+		if err != nil {
+			panic(err)
+		}
+		defer optLogFile.Close()
+		solver.WriteOptimizationLogToFile(optLogFile)
+	}
 
 	if submit {
 		sol := solver.GetSolution()
@@ -126,5 +114,4 @@ func main() {
 			panic(err)
 		}
 	}
-	// <-exitCh
 }

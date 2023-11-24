@@ -25,7 +25,7 @@ type Config struct {
 	MapData                    *types.MapData
 	GeneralGameData            *types.GeneralGameData
 	MutationProbability        float64
-	ReproductionMethod         ReproductionMethod
+	ReproductionMethod         ReproductionMethod // Intended to be used, but just used RankSelection
 	GenerationImprovementLimit int
 	Debug                      bool
 }
@@ -83,8 +83,6 @@ func (s *Solver) Optimize(debug bool) {
 		if s.Finished {
 			break
 		}
-		// for generation := 0; generation < 800; generation++ {
-		// for generation := 0; s.BestSolution < 6168.51; generation++ {
 		s.Generation = generation
 		s.EvaluatePopulation()
 		s.RankPopulation(generation)
@@ -104,7 +102,7 @@ func (s *Solver) Optimize(debug bool) {
 			Diversity:     s.Diversity,
 		})
 		if s.LatestImprovement-s.Generation > 1000 {
-			// Reached local optima, need to randomize more
+			// Stuck in local optima, need to randomize more
 			s.Replace(s.Clone(s.Population), []*genome.Genome{}, []*genome.Genome{})
 			s.Mutate()
 			continue
@@ -130,6 +128,7 @@ func (s *Solver) SeedPopulation() {
 }
 
 func (s *Solver) EvaluatePopulation() {
+	// Evaluate each genome in the population concurrently using goroutines
 	var wg sync.WaitGroup
 
 	for _, gene := range s.Population {
@@ -193,13 +192,12 @@ func (s *Solver) Mutate() {
 		if i == 0 {
 			continue // don't mutate the best genome
 		}
-		// if mutate threshold is met, mutate genome
 		mutProb := s.Config.MutationProbability
 		if s.Diversity < 0.4 {
 			mutProb += 2 * (0.4 - s.Diversity)
 		}
 		if s.LatestImprovement-s.Generation > 1000 {
-			genome.MutateNeighbors(1.0, s.Config.Locations)
+			genome.MutateNeighbors(1.0, s.Config.Locations) // Mutate extra hard if stuck in local optima
 		} else if rand.Float64() < s.Config.MutationProbability {
 			genome.MutateNeighbors(s.Config.MutationProbability, s.Config.Locations)
 		}

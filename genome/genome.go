@@ -36,6 +36,8 @@ func NewRandomGenome(rng *rand.Rand, locations int) *Genome {
 }
 
 func NewRandomGenome2(rng *rand.Rand, locations int) *Genome {
+	// This function generates a genome with a 50% chance of having a 0 for both F3 and F9
+	// It is used to abuse the crossover function to properly search the search space
 	pairs := make([]Pair, locations)
 	for i := 0; i < locations; i++ {
 		f3, f9 := 0, 0
@@ -55,6 +57,7 @@ func NewRandomGenome2(rng *rand.Rand, locations int) *Genome {
 }
 
 func (g *Genome) Fitness() float64 {
+	// Never used
 	return g.Score
 }
 
